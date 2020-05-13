@@ -5,8 +5,6 @@
 #include "stdio.h"
 #include <queue>
 #include "Servo.h"
-
-
 #define LED_PIN     LED1
 
 //header for RC-Car
@@ -18,14 +16,13 @@ uint32_t            speed;
 uint32_t            angle;
 uint32_t            value;
 float tempVal = 0.5;
-float mid=0.5;
-float deg=180;
+float mid=0;
+float midAngle=0.4;
+float multiplier=2.5;
+float deg=180/multiplier;
 float servoInc=0.05;
-float speedConv=0.005;
+float speedConv=0.01;
 float a=0.5;
-//const uint32_t             mid = 50;
-//const uint32_t             p_DC = 5;
-//const uint32_t             p_Servo= 5;
 Servo turnServo(PB_5);
 //Servo brakeServo(PB_6);
 Servo DCMotor(PA_8);
@@ -50,9 +47,6 @@ std::queue<CANMessage> sendFifoDB2;
 uint32_t canIdNCU[] = {1, 33};
 uint32_t canIdTCU[] = {0, 32};
 uint32_t canIdUCU[] = {2, };
-
-
-//list of can nodes connected to DB2 ()
 
 volatile uint32_t writeIndexDB1 = 0;
 uint32_t readIndexDB1 = 0;
@@ -87,7 +81,7 @@ Serial              pc(SERIAL_TX, SERIAL_RX);
 
 int main() 
 {   
-    turnServo=mid;    
+    turnServo=midAngle;    
     init();
     //testkod för att printa CAN
     CANMessage test;
@@ -157,7 +151,7 @@ void canRxIsrDB1()
         //canPrintMsg(&bufferDB1[prevWriteIndex], &pc);
         //canPrintMsg(&temp, &pc);    
     }
-    pc.printf("Message = %f\r\n",(temp.data[0]*16*16+temp.data[1])/100);
+    //pc.printf("Message = %f\r\n",(temp.data[0]*16*16+temp.data[1])/100);
     switch (temp.id){  
         case 1:
             //Signalen som ska till TCU dvs Gas
@@ -166,10 +160,10 @@ void canRxIsrDB1()
             speed = (temp.data[0]*16*16+temp.data[1])/100; //Omvandla från hex till decimal
             
             if(speed <= 100){
-                pc.printf("Speed  = %d ", speed);
+                //pc.printf("Speed  = %d ", speed);
                 tempVal=mid+speed*speedConv;
                 DCMotor=tempVal;
-                pc.printf("|| Signal  = %f\r\n", tempVal);
+                //pc.printf("|| Signal  = %f\r\n", tempVal);
             }
         
             else
@@ -186,22 +180,22 @@ void canRxIsrDB1()
             
             
             if(angle > 0 && angle < 327){
-                //pc.printf("Angle  = %d\r\n", angle);
-                tempVal = mid+ angle/deg;
-                //tempVal=mid + servoInc;
+                pc.printf("Angle  = %d", angle);
+                tempVal = midAngle- angle/deg;
+                //tempVal=midAngle + servoInc;
                 //tempVal=1;
-                //pc.printf("Signal  = %f\r\n", tempVal);
+                pc.printf("|| Signal  = %f\r\n", tempVal);
                 turnServo=tempVal;
             }
             else if(angle > 200){
                 angle= angle-655;
                 tempVal=abs( int(angle));
-                //pc.printf("Angle  = %d\r\n", angle);
+                pc.printf("Angle  = %d", angle);
                 //pc.printf("Angle/deg  = %d\r\n", angle/deg);
-                tempVal =  mid - tempVal/deg;
-                //tempVal=mid - servoInc;
+                tempVal =  midAngle + tempVal/deg;
+                //tempVal=midAngle - servoInc;
                 //tempVal=0;
-                //pc.printf("Signal  = %f\r\n", tempVal);
+                pc.printf("|| Signal  = %f\r\n", tempVal);
                 turnServo=tempVal;
             }
             else
